@@ -1,4 +1,7 @@
 .go/
 .cache/
-dist/
+dist/demo-data/
+dist/*-debug.exe
+dist/*.log
+dist/*~
 *.syso
