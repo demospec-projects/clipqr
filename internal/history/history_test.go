@@ -10,6 +10,8 @@ import (
 
 var now = time.Date(2026, 9, 29, 10, 0, 0, 0, time.UTC)
 
+func key(text string) string { return Entry{Text: text}.Key() }
+
 func texts(h History) []string {
 	var out []string
 	for _, e := range h.Entries {
@@ -45,7 +47,7 @@ func TestHistoryMoveAndBound(t *testing.T) {
 func TestPinnedTextsSurviveLimitAndClear(t *testing.T) {
 	var h History
 	h.Add("épinglé", now)
-	h.SetPinned("épinglé", true)
+	h.SetPinned(key("épinglé"), true)
 	for i := 0; i < 150; i++ {
 		h.Add(fmt.Sprint(i), now)
 	}
@@ -59,7 +61,7 @@ func TestPinnedTextsSurviveLimitAndClear(t *testing.T) {
 	if removed := h.ClearUnpinned(); removed != 100 || len(h.Entries) != 1 {
 		t.Fatal("clear should keep pinned texts only", removed, texts(h))
 	}
-	if h.SetPinned("inconnu", true) {
+	if h.SetPinned(key("inconnu"), true) {
 		t.Fatal("pinned an unknown text")
 	}
 }
@@ -69,9 +71,9 @@ func TestUnpinningTrimsToLimit(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		h.Add(fmt.Sprint(i), now)
 	}
-	h.SetPinned("0", true)
+	h.SetPinned(key("0"), true)
 	h.Add("100", now)
-	h.SetPinned("0", false)
+	h.SetPinned(key("0"), false)
 	if len(h.Entries) != 100 || h.Entries[99].Text == "0" {
 		t.Fatal("unpinned text should fall off the end", texts(h))
 	}
@@ -81,7 +83,7 @@ func TestSecretTextStaysHidden(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "history.json")
 	var h History
 	h.Add("motdepasse", now)
-	h.SetSecret("motdepasse", true)
+	h.SetSecret(key("motdepasse"), true)
 	h.Add("autre", now)
 	h.Add("motdepasse", now)
 	if !h.Entries[0].Secret || h.Entries[1].Secret {
@@ -97,7 +99,7 @@ func TestSecretTextStaysHidden(t *testing.T) {
 	if !got.Entries[0].Secret {
 		t.Fatal("hidden flag lost on reload")
 	}
-	if !got.SetSecret("motdepasse", false) || got.Entries[0].Secret || got.SetSecret("inconnu", true) {
+	if !got.SetSecret(key("motdepasse"), false) || got.Entries[0].Secret || got.SetSecret(key("inconnu"), true) {
 		t.Fatal("SetSecret")
 	}
 }
@@ -107,7 +109,7 @@ func TestPersistencePreservesText(t *testing.T) {
 	h := History{}
 	text := "  Français 🦊\r\n deuxième ligne\t "
 	h.Add(text, now)
-	h.SetPinned(text, true)
+	h.SetPinned(key(text), true)
 	if err := h.Save(p); err != nil {
 		t.Fatal(err)
 	}
@@ -135,5 +137,35 @@ func TestLoadsFirstWindowsFormat(t *testing.T) {
 	}
 	if fmt.Sprint(texts(got)) != "[récent ancien]" || !got.Entries[0].CopiedAt.IsZero() {
 		t.Fatal("old format not read", got)
+	}
+}
+
+func TestFilesAndImagesAreEntriesToo(t *testing.T) {
+	var h History
+	files := Entry{Files: []string{"/tmp/a.pdf", "/tmp/b.png"}, CopiedAt: now}
+	image := Entry{Image: "/tmp/i.png", ImageKey: "abc", Width: 10, Height: 5, CopiedAt: now}
+	if !h.AddEntry(files) || !h.AddEntry(image) || h.AddEntry(Entry{Files: []string{}}) || h.AddEntry(Entry{ImageKey: "x"}) {
+		t.Fatal("files and images accepted, empty ones refused")
+	}
+	h.Add("/tmp/a.pdf\n/tmp/b.png", now)
+	if len(h.Entries) != 3 {
+		t.Fatal("a text is never mistaken for the files it names", len(h.Entries))
+	}
+	h.AddEntry(Entry{Files: []string{"/tmp/a.pdf", "/tmp/b.png"}, CopiedAt: now})
+	if h.Entries[0].Key() != files.Key() || len(h.Entries) != 3 {
+		t.Fatal("the same files copied again move to the top")
+	}
+	if !h.ImageKeys()["abc"] || len(h.ImageKeys()) != 1 {
+		t.Fatal("ImageKeys", h.ImageKeys())
+	}
+}
+
+func TestScreenshotKeepsItsFileWhenCopiedAgain(t *testing.T) {
+	var h History
+	h.AddEntry(Entry{Image: "/ecrans/IE_AB12.png", ImageKey: "k", Capture: true, CopiedAt: now})
+	h.Add("autre", now)
+	h.AddEntry(Entry{Image: "/clipqr/images/k.png", ImageKey: "k", CopiedAt: now})
+	if e := h.Entries[0]; !e.Capture || e.Image != "/ecrans/IE_AB12.png" {
+		t.Fatal("a screenshot copied back must stay its saved file", e)
 	}
 }

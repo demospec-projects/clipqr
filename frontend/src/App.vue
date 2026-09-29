@@ -3,12 +3,12 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Events, Window } from '@wailsio/runtime'
 import * as Clip from '../bindings/github.com/demospec-projects/clipqr/clipservice'
 import type { EntryView, State } from '../bindings/github.com/demospec-projects/clipqr/models'
-import CarteTexte from './components/CarteTexte.vue'
+import Carte from './components/Carte.vue'
 import FeuilleQr from './components/FeuilleQr.vue'
 import Icone from './components/Icone.vue'
 import { MASQUE } from './masque'
 
-const etat = ref<State>({ entries: [], paused: false, current: '', error: '' })
+const etat = ref<State>({ entries: [], paused: false, current: '', error: '', captureMode: false, captureAvailable: false, capturesDir: '' })
 const recherche = ref('')
 const maintenant = ref(Date.now())
 const copieRecente = ref('')
@@ -23,7 +23,11 @@ function sansAccents(texte: string): string {
   return texte.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 }
 const entrees = computed(() => etat.value.entries ?? [])
-const cles = computed(() => new Map(entrees.value.map((e) => [e.id, sansAccents(e.text)])))
+// On cherche dans le texte, dans les noms et le dossier des fichiers, et dans le nom des captures.
+function cleDeRecherche(e: EntryView): string {
+  return sansAccents([e.text, ...(e.files ?? []), e.name].join(' '))
+}
+const cles = computed(() => new Map(entrees.value.map((e) => [e.id, cleDeRecherche(e)])))
 const visibles = computed(() => {
   const q = sansAccents(recherche.value.trim())
   return q ? entrees.value.filter((e) => cles.value.get(e.id)?.includes(q)) : entrees.value
@@ -106,6 +110,20 @@ function surToucheRecherche(e: KeyboardEvent) {
         >
           <Icone :nom="etat.paused ? 'reprendre' : 'pause'" :taille="16" />
         </button>
+        <button
+          v-if="etat.captureAvailable"
+          class="bouton"
+          :class="{ actif: etat.captureMode }"
+          type="button"
+          :title="
+            etat.captureMode
+              ? `Impr. écran enregistre dans ${etat.capturesDir} — cliquer pour rendre la touche au système`
+              : 'Prendre Impr. écran : chaque capture est enregistrée et gardée ici'
+          "
+          @click="agir(() => Clip.SetCaptureMode(!etat.captureMode))"
+        >
+          <Icone nom="camera" :taille="16" />
+        </button>
         <button class="bouton" type="button" title="Effacer l’historique" :disabled="nonEpinglees === 0" @click="confirmerEffacement = true">
           <Icone nom="corbeille" :taille="16" />
         </button>
@@ -117,7 +135,7 @@ function surToucheRecherche(e: KeyboardEvent) {
 
     <div class="recherche">
       <Icone nom="recherche" :taille="16" />
-      <input v-model="recherche" type="search" placeholder="Rechercher dans les textes copiés…" spellcheck="false" @keydown="surToucheRecherche" />
+      <input v-model="recherche" type="search" placeholder="Rechercher dans l’historique…" spellcheck="false" @keydown="surToucheRecherche" />
       <button v-if="recherche" class="vider" type="button" title="Vider la recherche" @click="recherche = ''">
         <Icone nom="fermer" :taille="14" />
       </button>
@@ -125,7 +143,7 @@ function surToucheRecherche(e: KeyboardEvent) {
 
     <Transition name="bandeau">
       <div v-if="confirmerEffacement" class="bandeau confirmation">
-        <span>Effacer {{ nonEpinglees }} texte{{ nonEpinglees > 1 ? 's' : '' }} ? Les épinglés restent.</span>
+        <span>Effacer {{ nonEpinglees }} élément{{ nonEpinglees > 1 ? 's' : '' }} ? Les épinglés et les captures enregistrées restent.</span>
         <button type="button" class="lien" @click="confirmerEffacement = false">Annuler</button>
         <button type="button" class="danger" @click="effacer">Effacer</button>
       </div>
@@ -142,7 +160,7 @@ function surToucheRecherche(e: KeyboardEvent) {
       <template v-if="epinglees.length">
         <h2>Épinglés <span>{{ epinglees.length }}</span></h2>
         <TransitionGroup name="carte" tag="div" class="cartes">
-          <CarteTexte
+          <Carte
             v-for="e in epinglees"
             :key="e.id"
             :entree="e"
@@ -162,7 +180,7 @@ function surToucheRecherche(e: KeyboardEvent) {
       <template v-if="recentes.length">
         <h2 v-if="epinglees.length">Récents <span>{{ recentes.length }}</span></h2>
         <TransitionGroup name="carte" tag="div" class="cartes">
-          <CarteTexte
+          <Carte
             v-for="e in recentes"
             :key="e.id"
             :entree="e"
@@ -182,7 +200,7 @@ function surToucheRecherche(e: KeyboardEvent) {
       <div v-if="!visibles.length" class="vide">
         <Icone :nom="recherche ? 'recherche' : 'pressePapiers'" :taille="34" />
         <p v-if="recherche">Aucun texte ne correspond à « {{ recherche }} ».</p>
-        <p v-else>Copiez un texte pour commencer ({{ raccourci.replace('V', 'C') }}).</p>
+        <p v-else>Copiez un texte, des fichiers ou une image pour commencer ({{ raccourci.replace('V', 'C') }}).</p>
       </div>
     </section>
 
@@ -190,7 +208,10 @@ function surToucheRecherche(e: KeyboardEvent) {
       <span class="statut" :class="{ suspendu: etat.paused }">
         <i />{{ etat.paused ? 'Collecte suspendue' : 'Collecte active' }}
       </span>
-      <span>{{ entrees.length }} texte{{ entrees.length > 1 ? 's' : '' }} · conservés sur ce poste</span>
+      <span v-if="etat.captureMode" class="captures" :title="`Chaque Impr. écran est enregistrée dans ${etat.capturesDir}`">
+        <Icone nom="camera" :taille="13" /> Impr. écran → {{ etat.capturesDir }}
+      </span>
+      <span v-else>{{ entrees.length }} élément{{ entrees.length > 1 ? 's' : '' }} · conservés sur ce poste</span>
     </footer>
 
     <FeuilleQr
@@ -224,6 +245,7 @@ function surToucheRecherche(e: KeyboardEvent) {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 .marque img {
   border-radius: 8px;
@@ -239,17 +261,21 @@ h1 {
   margin: 1px 0 0;
   font-size: 11.5px;
   color: var(--discret);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .boutons {
   --wails-draggable: no-drag;
   display: flex;
-  gap: 2px;
+  flex: none;
+  gap: 1px;
 }
 .bouton {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 9px;
   color: var(--discret);
   transition: background 0.15s, color 0.15s;
@@ -260,6 +286,11 @@ h1 {
 }
 .bouton:disabled {
   opacity: 0.35;
+}
+.bouton.actif {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  box-shadow: 0 4px 12px -4px var(--accent-ombre);
 }
 .bouton.alerte {
   color: var(--attention);
@@ -397,6 +428,17 @@ h2 span {
   border-top: 1px solid var(--bordure);
   font-size: 11.5px;
   color: var(--discret);
+}
+.captures {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--accent);
+  font-weight: 600;
 }
 .statut {
   display: inline-flex;

@@ -14,9 +14,30 @@ export interface EntryView {
     "kind": history$0.Kind;
 
     /**
-     * Secret: the text is not sent to the interface at all, only its mark.
+     * Secret: nothing of the content is sent to the interface, only its mark.
      */
     "secret": boolean;
+
+    /**
+     * Files: the copied paths; Missing counts those no longer found.
+     */
+    "files": string[] | null;
+    "missing": number;
+    "folder": boolean;
+
+    /**
+     * Place is the folder the files come from, home shortened to ~.
+     */
+    "place": string;
+
+    /**
+     * Thumb is the address of the image's thumbnail; Name, a screenshot's file name.
+     */
+    "thumb": string;
+    "width": number;
+    "height": number;
+    "capture": boolean;
+    "name": string;
 }
 
 export interface State {
@@ -28,4 +49,12 @@ export interface State {
      */
     "current": string;
     "error": string;
+
+    /**
+     * CaptureMode: Print Screen belongs to ClipQR, which saves each screenshot
+     * in CapturesDir. CaptureAvailable is false where the key cannot be taken.
+     */
+    "captureMode": boolean;
+    "captureAvailable": boolean;
+    "capturesDir": string;
 }

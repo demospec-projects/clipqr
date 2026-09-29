@@ -35,13 +35,13 @@ func placeNearClock(app *application.App, panel *application.WebviewWindow) {
 	panel.SetPosition(x, y)
 }
 
-// placeAgainAfterWindowManager: an X11 window manager places a window itself
-// when it appears (Cinnamon centers it), after the move asked before showing.
-// The panel is put back above the clock once the window manager is done.
-func placeAgainAfterWindowManager(app *application.App, panel *application.WebviewWindow) {
+// afterWindowManager: an X11 window manager places a window itself when it
+// appears (Cinnamon centers it), after the move asked before showing. The
+// placement is done again once the window manager is done.
+func afterWindowManager(place func()) {
 	for _, wait := range []time.Duration{50 * time.Millisecond, 150 * time.Millisecond, 300 * time.Millisecond} {
 		time.Sleep(wait)
-		placeNearClock(app, panel)
+		place()
 	}
 }
 

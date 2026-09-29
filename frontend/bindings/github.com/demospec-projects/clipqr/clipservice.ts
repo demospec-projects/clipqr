@@ -15,7 +15,8 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as $models from "./models.js";
 
 /**
- * Clear forgets the unpinned texts; the clipboard itself is left alone.
+ * Clear forgets the unpinned entries; the clipboard itself is left alone, and
+ * so are the screenshots saved in the screenshots folder.
  */
 export function Clear(): $CancellablePromise<void> {
     return $Call.ByID(1034691268);
@@ -40,10 +41,18 @@ export function Open(id: string): $CancellablePromise<void> {
 }
 
 /**
- * QRCode returns the entry as a PNG image, ready for an <img> tag.
+ * QRCode returns a text as a PNG image, ready for an <img> tag.
  */
 export function QRCode(id: string): $CancellablePromise<string> {
     return $Call.ByID(3736011793, id);
+}
+
+/**
+ * SetCaptureMode gives Print Screen to ClipQR, or back to the system. Called
+ * by the panel's camera button and by the tray menu; each follows the other.
+ */
+export function SetCaptureMode(on: boolean): $CancellablePromise<void> {
+    return $Call.ByID(1067889026, on);
 }
 
 /**
@@ -58,7 +67,7 @@ export function SetPinned(id: string, pinned: boolean): $CancellablePromise<void
 }
 
 /**
- * SetSecret hides a text (a password) from whoever looks over the shoulder;
+ * SetSecret hides an entry (a password) from whoever looks over the shoulder;
  * it is still copied in clear.
  */
 export function SetSecret(id: string, secret: boolean): $CancellablePromise<void> {

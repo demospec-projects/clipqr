@@ -14,4 +14,6 @@ export enum Kind {
     KindLink = "link",
     KindEmail = "email",
     KindPhone = "phone",
+    KindFiles = "files",
+    KindImage = "image",
 };

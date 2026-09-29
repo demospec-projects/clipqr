@@ -5,9 +5,13 @@ import (
 	"flag"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
+	"syscall"
+	"time"
 
+	"github.com/adrg/xdg"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
@@ -28,16 +32,20 @@ func main() {
 	}
 	dataDir := flag.String("data-dir", filepath.Join(configDir, "ClipQR"), "Dossier de l’historique")
 	paused := flag.Bool("paused", false, "Démarrer avec la collecte suspendue")
+	capturesDir := flag.String("captures-dir", filepath.Join(xdg.UserDirs.Pictures, "ecrans"), "Dossier des captures Impr. écran")
 	flag.Parse()
 
-	clip := newClipService(filepath.Join(*dataDir, "history.json"), *paused)
+	clip := newClipService(*dataDir, *capturesDir, *paused)
 	var show func()
 
 	app := application.New(application.Options{
 		Name:        "ClipQR",
 		Description: "Historique du presse-papiers et QR codes",
 		Services:    []application.Service{application.NewService(clip)},
-		Assets:      application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
+		Assets: application.AssetOptions{
+			Handler:    application.AssetFileServerFS(assets),
+			Middleware: clip.serveThumbnails,
+		},
 		// A second launch opens the panel of the running ClipQR instead.
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: "ca.demospec.clipqr",
@@ -79,7 +87,25 @@ func main() {
 		panel.Show()
 		panel.Focus()
 		if runtime.GOOS == "linux" {
-			go placeAgainAfterWindowManager(app, panel)
+			go afterWindowManager(func() { placeNearClock(app, panel) })
+		}
+	}
+
+	// A screenshot leaves the panel out of the picture, then puts it back
+	// where it was, even if the user had moved it.
+	clip.withPanelHidden = func(grab func()) {
+		if !panel.IsVisible() {
+			grab()
+			return
+		}
+		x, y := panel.Position()
+		panel.Hide()
+		time.Sleep(250 * time.Millisecond) // the screen repaints what the panel covered
+		grab()
+		panel.SetPosition(x, y)
+		panel.Show()
+		if runtime.GOOS == "linux" {
+			go afterWindowManager(func() { panel.SetPosition(x, y) })
 		}
 	}
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) { show() })
@@ -99,6 +125,19 @@ func main() {
 		}
 	})
 
+	// Closing the session or a kill quits cleanly: the desktop gets Print back.
+	// A signal the launch chose to ignore (a background start) stays ignored.
+	signals := make(chan os.Signal, 1)
+	for _, sig := range []os.Signal{syscall.SIGINT, syscall.SIGTERM} {
+		if !signal.Ignored(sig) {
+			signal.Notify(signals, sig)
+		}
+	}
+	go func() {
+		<-signals
+		app.Quit()
+	}()
+
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
@@ -110,6 +149,15 @@ func trayMenu(app *application.App, show func(), clip *ClipService, paused bool)
 	pause := menu.AddCheckbox("Suspendre la collecte", paused)
 	pause.OnClick(func(ctx *application.Context) { clip.SetPaused(ctx.ClickedMenuItem().Checked()) })
 	clip.pausedChanged = func(p bool) { pause.SetChecked(p) }
+	if printKeyAvailable() {
+		capture := menu.AddCheckbox("Impr. écran par ClipQR", false)
+		capture.OnClick(func(ctx *application.Context) {
+			if err := clip.SetCaptureMode(ctx.ClickedMenuItem().Checked()); err != nil {
+				clip.fail(err.Error())
+			}
+		})
+		clip.captureModeChanged = func(on bool) { capture.SetChecked(on) }
+	}
 	menu.AddSeparator()
 	menu.Add("Quitter").OnClick(func(*application.Context) { app.Quit() })
 	return menu

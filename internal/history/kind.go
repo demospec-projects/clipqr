@@ -14,7 +14,20 @@ const (
 	KindLink  Kind = "link"
 	KindEmail Kind = "email"
 	KindPhone Kind = "phone"
+	KindFiles Kind = "files"
+	KindImage Kind = "image"
 )
+
+// KindOfEntry: files and images first, then what the text looks like.
+func KindOfEntry(e Entry) Kind {
+	switch {
+	case len(e.Files) > 0:
+		return KindFiles
+	case e.ImageKey != "":
+		return KindImage
+	}
+	return KindOf(e.Text)
+}
 
 var emailPattern = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
 var phonePattern = regexp.MustCompile(`^\+?[0-9 ().-]+$`)

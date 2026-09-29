@@ -8,19 +8,50 @@ import (
 	"time"
 )
 
-// Limit is the number of unpinned texts kept; pinned texts do not count.
+// Limit is the number of unpinned entries kept; pinned entries do not count.
 const Limit = 100
 const MaxTextBytes = 256 * 1024
 
+// Entry is one copy: a text, a list of files, or an image.
 type Entry struct {
-	Text     string    `json:"text"`
+	Text string `json:"text,omitempty"`
+	// Files are the paths of copied files: the clipboard holds paths, never contents.
+	Files []string `json:"files,omitempty"`
+	// Image is the path of the PNG file; ImageKey fingerprints its pixels.
+	Image    string `json:"image,omitempty"`
+	ImageKey string `json:"imageKey,omitempty"`
+	Width    int    `json:"width,omitempty"`
+	Height   int    `json:"height,omitempty"`
+	// Capture: a screenshot taken by ClipQR with the Print Screen key.
+	Capture  bool      `json:"capture,omitempty"`
 	CopiedAt time.Time `json:"copiedAt"`
 	Pinned   bool      `json:"pinned,omitempty"`
-	// Secret texts (passwords) are hidden on screen; the file keeps them in clear.
+	// Secret entries (passwords) are hidden on screen; the file keeps them in clear.
 	Secret bool `json:"secret,omitempty"`
 }
 
-// History lists texts from the most recently copied to the oldest.
+// Key tells two copies of the same thing apart from two different things.
+func (e Entry) Key() string {
+	switch {
+	case len(e.Files) > 0:
+		return "files:" + strings.Join(e.Files, "\n")
+	case e.ImageKey != "":
+		return "image:" + e.ImageKey
+	}
+	return "text:" + e.Text
+}
+
+func (e Entry) valid() bool {
+	switch {
+	case len(e.Files) > 0:
+		return true
+	case e.ImageKey != "":
+		return e.Image != ""
+	}
+	return strings.TrimSpace(e.Text) != "" && len(e.Text) <= MaxTextBytes
+}
+
+// History lists entries from the most recently copied to the oldest.
 type History struct {
 	Entries []Entry `json:"entries"`
 }
@@ -28,22 +59,27 @@ type History struct {
 // Add puts text at the top, or moves it there if it is already known.
 // It reports whether the history changed.
 func (h *History) Add(text string, at time.Time) bool {
-	return h.add(Entry{Text: text, CopiedAt: at})
+	return h.AddEntry(Entry{Text: text, CopiedAt: at})
 }
 
-func (h *History) add(entry Entry) bool {
-	if strings.TrimSpace(entry.Text) == "" || len(entry.Text) > MaxTextBytes {
+// AddEntry puts the entry at the top, or moves it there if it is already known.
+func (h *History) AddEntry(entry Entry) bool {
+	if !entry.valid() {
 		return false
 	}
-	if len(h.Entries) > 0 && h.Entries[0].Text == entry.Text {
+	if len(h.Entries) > 0 && h.Entries[0].Key() == entry.Key() {
 		return false
 	}
 	entries := []Entry{entry}
 	for _, old := range h.Entries {
-		if old.Text == entry.Text {
-			// A text copied again keeps its pin and stays hidden.
+		if old.Key() == entry.Key() {
+			// Copied again: it keeps its pin, stays hidden, and a screenshot
+			// stays the file saved in the screenshots folder.
 			entries[0].Pinned = entries[0].Pinned || old.Pinned
 			entries[0].Secret = entries[0].Secret || old.Secret
+			if old.Capture {
+				entries[0].Image, entries[0].Capture = old.Image, true
+			}
 			continue
 		}
 		entries = append(entries, old)
@@ -53,9 +89,9 @@ func (h *History) add(entry Entry) bool {
 	return true
 }
 
-func (h *History) SetPinned(text string, pinned bool) bool {
+func (h *History) SetPinned(key string, pinned bool) bool {
 	for i := range h.Entries {
-		if h.Entries[i].Text == text {
+		if h.Entries[i].Key() == key {
 			h.Entries[i].Pinned = pinned
 			h.trim()
 			return true
@@ -64,9 +100,9 @@ func (h *History) SetPinned(text string, pinned bool) bool {
 	return false
 }
 
-func (h *History) SetSecret(text string, secret bool) bool {
+func (h *History) SetSecret(key string, secret bool) bool {
 	for i := range h.Entries {
-		if h.Entries[i].Text == text {
+		if h.Entries[i].Key() == key {
 			h.Entries[i].Secret = secret
 			return true
 		}
@@ -74,7 +110,19 @@ func (h *History) SetSecret(text string, secret bool) bool {
 	return false
 }
 
-// ClearUnpinned forgets every text that is not pinned and returns how many were removed.
+// ImageKeys lists the images still in the history, so that the copies
+// ClipQR keeps of them can be cleaned up once they fall off.
+func (h *History) ImageKeys() map[string]bool {
+	keys := map[string]bool{}
+	for _, e := range h.Entries {
+		if e.ImageKey != "" {
+			keys[e.ImageKey] = true
+		}
+	}
+	return keys
+}
+
+// ClearUnpinned forgets every entry that is not pinned and returns how many were removed.
 func (h *History) ClearUnpinned() int {
 	kept := []Entry{}
 	for _, e := range h.Entries {
@@ -87,7 +135,7 @@ func (h *History) ClearUnpinned() int {
 	return removed
 }
 
-// trim drops the oldest unpinned texts beyond Limit.
+// trim drops the oldest unpinned entries beyond Limit.
 func (h *History) trim() {
 	kept := []Entry{}
 	unpinned := 0
@@ -125,7 +173,7 @@ func Load(path string) (History, error) {
 		h.Add(saved.Items[i], time.Time{})
 	}
 	for i := len(saved.Entries) - 1; i >= 0; i-- {
-		h.add(saved.Entries[i])
+		h.AddEntry(saved.Entries[i])
 	}
 	return h, nil
 }
