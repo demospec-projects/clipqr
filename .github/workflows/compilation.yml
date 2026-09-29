@@ -1,0 +1,105 @@
+# Chaque système se compile sur lui-même (webview natif) ; une étiquette v*
+# publie les trois exécutables dans une release GitHub.
+name: Compilation
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+env:
+  WAILS_VERSION: v3.0.0-beta.26
+
+jobs:
+  compiler:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            systeme: windows
+          - os: macos-latest
+            systeme: macos
+          - os: ubuntu-24.04
+            systeme: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Bibliothèques GTK 4 et WebKitGTK
+        if: matrix.systeme == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
+
+      - name: Outil Wails
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
+
+      - name: Tests
+        run: go test ./internal/...
+
+      - name: Windows — exécutable autonome
+        if: matrix.systeme == 'windows'
+        shell: bash
+        run: |
+          wails3 build
+          mkdir -p livrables
+          cp bin/clipqr.exe livrables/ClipQR-windows-amd64.exe
+
+      - name: macOS — application universelle (Intel et Apple Silicon)
+        if: matrix.systeme == 'macos'
+        run: |
+          wails3 task darwin:package:universal
+          mv bin/clipqr.app bin/ClipQR.app
+          mkdir -p livrables
+          ditto -c -k --keepParent bin/ClipQR.app livrables/ClipQR-macos-universal.zip
+
+      - name: Linux — paquet .deb et exécutable
+        if: matrix.systeme == 'linux'
+        env:
+          GIT_COMMITTER_NAME: Demospec
+          GIT_COMMITTER_EMAIL: noreply@demospec.ca
+        run: |
+          wails3 task linux:create:deb
+          mkdir -p livrables
+          cp bin/*.deb livrables/ClipQR-linux-amd64.deb
+          tar -czf livrables/ClipQR-linux-amd64.tar.gz -C bin clipqr
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: clipqr-${{ matrix.systeme }}
+          path: livrables/*
+
+  publier:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: compiler
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          path: livrables
+          merge-multiple: true
+
+      - name: Empreintes SHA-256
+        run: cd livrables && sha256sum * > SHA256SUMS.txt
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" livrables/* --repo "$GITHUB_REPOSITORY" --title "ClipQR $GITHUB_REF_NAME" --generate-notes

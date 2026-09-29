@@ -1,0 +1,105 @@
+:root {
+  --accent-1: #2563eb;
+  --accent-2: #7c3aed;
+  --accent: #4f46e5;
+  --accent-ombre: rgb(79 70 229 / 0.55);
+  --succes: #059669;
+  --attention: #d97706;
+  --danger: #dc2626;
+  --rayon: 12px;
+  --type-lien: #2563eb;
+  --type-courriel: #7c3aed;
+  --type-tel: #059669;
+
+  --fond: #f6f7fb;
+  --entete: linear-gradient(180deg, rgb(79 70 229 / 0.07), transparent);
+  --fond-eleve: #ffffff;
+  --carte: #ffffff;
+  --carte-survol: #fbfbfe;
+  --carte-survol-plein: #fbfbfe;
+  --champ: #ffffff;
+  --bordure: rgb(15 23 42 / 0.08);
+  --bordure-forte: rgb(79 70 229 / 0.35);
+  --survol: rgb(15 23 42 / 0.06);
+  --texte: #0f172a;
+  --discret: #64748b;
+  --pastille-fond: rgb(15 23 42 / 0.06);
+  --pastille-texte: #475569;
+  --voile: rgb(15 23 42 / 0.28);
+
+  color-scheme: light dark;
+  font-family: 'Segoe UI Variable Text', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, Ubuntu, Cantarell,
+    'Noto Sans', system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--texte);
+  background: var(--fond);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #818cf8;
+    --accent-ombre: rgb(99 102 241 / 0.6);
+    --succes: #34d399;
+    --attention: #fbbf24;
+    --danger: #ef4444;
+    --type-lien: #60a5fa;
+    --type-courriel: #a78bfa;
+    --type-tel: #34d399;
+
+    --fond: #0d1220;
+    --entete: linear-gradient(180deg, rgb(99 102 241 / 0.14), transparent);
+    --fond-eleve: #161d31;
+    --carte: rgb(255 255 255 / 0.04);
+    --carte-survol: rgb(255 255 255 / 0.07);
+    --carte-survol-plein: #1e2330;
+    --champ: rgb(255 255 255 / 0.05);
+    --bordure: rgb(255 255 255 / 0.08);
+    --bordure-forte: rgb(129 140 248 / 0.45);
+    --survol: rgb(255 255 255 / 0.08);
+    --texte: #e8ebf4;
+    --discret: #8b95ad;
+    --pastille-fond: rgb(255 255 255 / 0.07);
+    --pastille-texte: #c3cad9;
+    --voile: rgb(2 6 23 / 0.55);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button {
+  font: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: var(--survol);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bordure-forte);
+}

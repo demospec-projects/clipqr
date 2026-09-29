@@ -1,7 +1,7 @@
-.go/
-.cache/
-dist/demo-data/
-dist/*-debug.exe
-dist/*.log
-dist/*~
+.task
+bin
+frontend/dist
+frontend/node_modules
+build/linux/appimage/build
+build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 *.syso

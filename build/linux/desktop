@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=ClipQR
+Comment=Historique du presse-papiers et QR codes
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/clipqr %u
+Terminal=false
+Type=Application
+Icon=clipqr
+Categories=Utility;
+StartupWMClass=clipqr
+
+ 
