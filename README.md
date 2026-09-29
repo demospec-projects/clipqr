@@ -8,7 +8,8 @@ Lancer ClipQR : son icône apparaît près de l’horloge (sous Windows, éventu
 
 - **Le panneau reste ouvert** et au premier plan tant qu’on ne le réduit pas : on peut enchaîner clic sur un texte, puis Ctrl+V (⌘V) dans une autre application, puis le texte suivant.
 - **Cliquer sur un texte le copie.** Il garde sa place dans la liste et porte la marque « Prêt à coller ».
-- **Au survol d’un texte** : 📌 l’épingler, afficher son **QR code**, ou **ouvrir** un lien (navigateur) ou un courriel (messagerie).
+- **Au survol d’un texte** : afficher son **QR code**, 🔑 le **masquer**, 📌 l’**épingler**, ou **ouvrir** un lien (navigateur) ou un courriel (messagerie).
+- **Mots de passe masqués** : la clé remplace le texte par des points, toujours de la même longueur, pour qui regarde par-dessus l’épaule ; un clic le copie en clair. Le texte masqué n’est pas transmis à l’interface ; il reste en clair dans le fichier d’historique.
 - **Épinglés** : en tête de liste, hors de la limite des 100, jamais effacés par « Effacer l’historique ».
 - **Types détectés** : lien, courriel, téléphone ou texte, avec l’heure de la copie (« il y a 3 min », « hier à 14 h 05 »).
 - Rechercher (sans tenir compte des accents), suspendre la collecte, effacer l’historique depuis le panneau.

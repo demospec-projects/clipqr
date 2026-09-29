@@ -58,6 +58,14 @@ export function SetPinned(id: string, pinned: boolean): $CancellablePromise<void
 }
 
 /**
+ * SetSecret hides a text (a password) from whoever looks over the shoulder;
+ * it is still copied in clear.
+ */
+export function SetSecret(id: string, secret: boolean): $CancellablePromise<void> {
+    return $Call.ByID(3154968077, id, secret);
+}
+
+/**
  * State returns everything the interface shows.
  */
 export function State(): $CancellablePromise<$models.State> {

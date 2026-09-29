@@ -6,6 +6,7 @@ import type { EntryView, State } from '../bindings/github.com/demospec-projects/
 import CarteTexte from './components/CarteTexte.vue'
 import FeuilleQr from './components/FeuilleQr.vue'
 import Icone from './components/Icone.vue'
+import { MASQUE } from './masque'
 
 const etat = ref<State>({ entries: [], paused: false, current: '', error: '' })
 const recherche = ref('')
@@ -151,6 +152,7 @@ function surToucheRecherche(e: KeyboardEvent) {
             :raccourci="raccourci"
             @copier="copier(e)"
             @epingler="agir(() => Clip.SetPinned(e.id, false))"
+            @masquer="agir(() => Clip.SetSecret(e.id, !e.secret))"
             @qr="afficherQr(e)"
             @ouvrir="agir(() => Clip.Open(e.id))"
           />
@@ -170,6 +172,7 @@ function surToucheRecherche(e: KeyboardEvent) {
             :raccourci="raccourci"
             @copier="copier(e)"
             @epingler="agir(() => Clip.SetPinned(e.id, true))"
+            @masquer="agir(() => Clip.SetSecret(e.id, !e.secret))"
             @qr="afficherQr(e)"
             @ouvrir="agir(() => Clip.Open(e.id))"
           />
@@ -192,7 +195,7 @@ function surToucheRecherche(e: KeyboardEvent) {
 
     <FeuilleQr
       v-if="qr"
-      :apercu="qr.entree.text.trim()"
+      :apercu="qr.entree.secret ? MASQUE : qr.entree.text.trim()"
       :image="qr.image"
       :erreur="qr.erreur"
       @fermer="qr = null"

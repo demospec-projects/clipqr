@@ -12,6 +12,11 @@ export interface EntryView {
     "copiedAt": string | null;
     "pinned": boolean;
     "kind": history$0.Kind;
+
+    /**
+     * Secret: the text is not sent to the interface at all, only its mark.
+     */
+    "secret": boolean;
 }
 
 export interface State {

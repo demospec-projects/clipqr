@@ -10,6 +10,7 @@
   --type-lien: #2563eb;
   --type-courriel: #7c3aed;
   --type-tel: #059669;
+  --type-secret: #d97706;
 
   --fond: #f6f7fb;
   --entete: linear-gradient(180deg, rgb(79 70 229 / 0.07), transparent);
@@ -46,6 +47,7 @@
     --type-lien: #60a5fa;
     --type-courriel: #a78bfa;
     --type-tel: #34d399;
+    --type-secret: #fbbf24;
 
     --fond: #0d1220;
     --entete: linear-gradient(180deg, rgb(99 102 241 / 0.14), transparent);

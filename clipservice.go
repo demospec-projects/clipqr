@@ -34,6 +34,8 @@ type EntryView struct {
 	CopiedAt  *time.Time   `json:"copiedAt"`
 	Pinned    bool         `json:"pinned"`
 	Kind      history.Kind `json:"kind"`
+	// Secret: the text is not sent to the interface at all, only its mark.
+	Secret bool `json:"secret"`
 }
 
 type State struct {
@@ -149,6 +151,17 @@ func (s *ClipService) SetPinned(id string, pinned bool) {
 	}
 }
 
+// SetSecret hides a text (a password) from whoever looks over the shoulder;
+// it is still copied in clear.
+func (s *ClipService) SetSecret(id string, secret bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if entry, ok := s.find(id); ok && s.data.SetSecret(entry.Text, secret) {
+		s.persist()
+		s.publish()
+	}
+}
+
 // Clear forgets the unpinned texts; the clipboard itself is left alone.
 func (s *ClipService) Clear() {
 	s.mu.Lock()
@@ -226,8 +239,10 @@ func (s *ClipService) publish() {
 func (s *ClipService) state() State {
 	st := State{Entries: []EntryView{}, Paused: s.paused, Error: s.errText}
 	for _, e := range s.data.Entries {
-		view := EntryView{ID: entryID(e.Text), Text: e.Text, Pinned: e.Pinned, Kind: history.KindOf(e.Text)}
-		if utf8.RuneCountInString(e.Text) > displayRunes {
+		view := EntryView{ID: entryID(e.Text), Text: e.Text, Pinned: e.Pinned, Kind: history.KindOf(e.Text), Secret: e.Secret}
+		if e.Secret {
+			view.Text, view.Kind = "", history.KindText
+		} else if utf8.RuneCountInString(e.Text) > displayRunes {
 			view.Text = string([]rune(e.Text)[:displayRunes])
 			view.Truncated = true
 		}

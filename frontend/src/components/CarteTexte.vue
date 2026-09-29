@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { EntryView } from '../../bindings/github.com/demospec-projects/clipqr/models'
+import { MASQUE } from '../masque'
 import { quand } from '../temps'
 import Icone from './Icone.vue'
 
@@ -13,13 +14,14 @@ const props = defineProps<{
   maintenant: number
   raccourci: string
 }>()
-const emit = defineEmits<{ copier: []; epingler: []; qr: []; ouvrir: [] }>()
+const emit = defineEmits<{ copier: []; epingler: []; masquer: []; qr: []; ouvrir: [] }>()
 
 const libelles: Record<string, string> = { link: 'Lien', email: 'Courriel', phone: 'Téléphone', text: 'Texte' }
 
-const apercu = computed(() => props.entree.text.trim() + (props.entree.truncated ? '…' : ''))
-const ouvrable = computed(() => props.entree.kind === 'link' || props.entree.kind === 'email')
+const apercu = computed(() => (props.entree.secret ? MASQUE : props.entree.text.trim() + (props.entree.truncated ? '…' : '')))
+const ouvrable = computed(() => !props.entree.secret && (props.entree.kind === 'link' || props.entree.kind === 'email'))
 const libelle = computed(() => {
+  if (props.entree.secret) return 'Mot de passe'
   const lignes = props.entree.text.trim().split('\n').length
   return props.entree.kind === 'text' && lignes > 1 ? `${lignes} lignes` : libelles[props.entree.kind] ?? 'Texte'
 })
@@ -27,9 +29,9 @@ const moment = computed(() => quand(props.entree.copiedAt, props.maintenant))
 </script>
 
 <template>
-  <article class="carte" :class="{ actuelle: actuel, epinglee: entree.pinned }">
+  <article class="carte" :class="{ actuelle: actuel, epinglee: entree.pinned, secrete: entree.secret }">
     <button class="corps" type="button" title="Cliquer pour copier" @click="emit('copier')">
-      <span class="pastille" :data-type="entree.kind"><Icone :nom="entree.kind" :taille="15" /></span>
+      <span class="pastille" :data-type="entree.secret ? 'secret' : entree.kind"><Icone :nom="entree.secret ? 'cle' : entree.kind" :taille="15" /></span>
       <span class="contenu">
         <span class="texte">{{ apercu }}</span>
         <span class="meta">
@@ -44,6 +46,9 @@ const moment = computed(() => quand(props.entree.copiedAt, props.maintenant))
       </button>
       <button class="action" type="button" title="QR code" @click="emit('qr')">
         <Icone nom="qr" :taille="16" />
+      </button>
+      <button class="action" :class="{ active: entree.secret }" type="button" :title="entree.secret ? 'Afficher le texte' : 'Masquer (mot de passe)'" @click="emit('masquer')">
+        <Icone nom="cle" :taille="16" />
       </button>
       <button class="action" :class="{ active: entree.pinned }" type="button" :title="entree.pinned ? 'Désépingler' : 'Épingler'" @click="emit('epingler')">
         <Icone nom="epingle" :taille="16" :plein="entree.pinned" />
@@ -103,6 +108,16 @@ const moment = computed(() => quand(props.entree.copiedAt, props.maintenant))
 .pastille[data-type='email'] {
   color: var(--type-courriel);
   background: color-mix(in srgb, var(--type-courriel) 15%, transparent);
+}
+.pastille[data-type='secret'] {
+  color: var(--type-secret);
+  background: color-mix(in srgb, var(--type-secret) 15%, transparent);
+}
+.secrete .texte {
+  font-size: 16px;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  color: var(--discret);
 }
 .pastille[data-type='phone'] {
   color: var(--type-tel);

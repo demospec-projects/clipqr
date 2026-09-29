@@ -77,6 +77,31 @@ func TestUnpinningTrimsToLimit(t *testing.T) {
 	}
 }
 
+func TestSecretTextStaysHidden(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "history.json")
+	var h History
+	h.Add("motdepasse", now)
+	h.SetSecret("motdepasse", true)
+	h.Add("autre", now)
+	h.Add("motdepasse", now)
+	if !h.Entries[0].Secret || h.Entries[1].Secret {
+		t.Fatal("copying a hidden text again showed it", h.Entries)
+	}
+	if err := h.Save(p); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Entries[0].Secret {
+		t.Fatal("hidden flag lost on reload")
+	}
+	if !got.SetSecret("motdepasse", false) || got.Entries[0].Secret || got.SetSecret("inconnu", true) {
+		t.Fatal("SetSecret")
+	}
+}
+
 func TestPersistencePreservesText(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "nested", "history.json")
 	h := History{}

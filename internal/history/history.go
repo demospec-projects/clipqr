@@ -16,6 +16,8 @@ type Entry struct {
 	Text     string    `json:"text"`
 	CopiedAt time.Time `json:"copiedAt"`
 	Pinned   bool      `json:"pinned,omitempty"`
+	// Secret texts (passwords) are hidden on screen; the file keeps them in clear.
+	Secret bool `json:"secret,omitempty"`
 }
 
 // History lists texts from the most recently copied to the oldest.
@@ -39,8 +41,9 @@ func (h *History) add(entry Entry) bool {
 	entries := []Entry{entry}
 	for _, old := range h.Entries {
 		if old.Text == entry.Text {
-			// A text copied again keeps its pin.
+			// A text copied again keeps its pin and stays hidden.
 			entries[0].Pinned = entries[0].Pinned || old.Pinned
+			entries[0].Secret = entries[0].Secret || old.Secret
 			continue
 		}
 		entries = append(entries, old)
@@ -55,6 +58,16 @@ func (h *History) SetPinned(text string, pinned bool) bool {
 		if h.Entries[i].Text == text {
 			h.Entries[i].Pinned = pinned
 			h.trim()
+			return true
+		}
+	}
+	return false
+}
+
+func (h *History) SetSecret(text string, secret bool) bool {
+	for i := range h.Entries {
+		if h.Entries[i].Text == text {
+			h.Entries[i].Secret = secret
 			return true
 		}
 	}
