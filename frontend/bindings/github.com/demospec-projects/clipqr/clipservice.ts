@@ -29,6 +29,14 @@ export function Copy(id: string): $CancellablePromise<void> {
     return $Call.ByID(738535650, id);
 }
 
+/**
+ * Delete forgets one entry, even pinned. Like Clear, it leaves the clipboard
+ * and the saved screenshots alone; a copied image's own copy goes with it.
+ */
+export function Delete(id: string): $CancellablePromise<void> {
+    return $Call.ByID(2151936232, id);
+}
+
 export function DismissError(): $CancellablePromise<void> {
     return $Call.ByID(2148176837);
 }
@@ -45,6 +53,15 @@ export function Open(id: string): $CancellablePromise<void> {
  */
 export function QRCode(id: string): $CancellablePromise<string> {
     return $Call.ByID(3736011793, id);
+}
+
+/**
+ * SetAutostart launches ClipQR, or no longer, at each opening of the session.
+ * Called by the question of the first launch, the panel and the tray menu;
+ * each follows the others.
+ */
+export function SetAutostart(on: boolean): $CancellablePromise<void> {
+    return $Call.ByID(3684103546, on);
 }
 
 /**

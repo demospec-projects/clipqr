@@ -14,7 +14,7 @@ const props = defineProps<{
   maintenant: number
   raccourci: string
 }>()
-const emit = defineEmits<{ copier: []; epingler: []; masquer: []; qr: []; ouvrir: [] }>()
+const emit = defineEmits<{ copier: []; epingler: []; masquer: []; qr: []; ouvrir: []; supprimer: [] }>()
 
 const libelles: Record<string, string> = { link: 'Lien', email: 'Courriel', phone: 'Téléphone', text: 'Texte' }
 const nombre = new Intl.NumberFormat('fr-CA')
@@ -107,6 +107,9 @@ const moment = computed(() => quand(e.value.copiedAt, props.maintenant))
       </button>
       <button class="action" :class="{ active: entree.pinned }" type="button" :title="entree.pinned ? 'Désépingler' : 'Épingler'" @click="emit('epingler')">
         <Icone nom="epingle" :taille="16" :plein="entree.pinned" />
+      </button>
+      <button class="action supprimer" type="button" title="Retirer de l’historique" @click="emit('supprimer')">
+        <Icone nom="fermer" :taille="16" />
       </button>
     </div>
     <Transition name="flash">
@@ -274,6 +277,10 @@ const moment = computed(() => quand(e.value.copiedAt, props.maintenant))
 }
 .action.active {
   color: var(--accent);
+}
+.action.supprimer:hover {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 .flash {
   position: absolute;

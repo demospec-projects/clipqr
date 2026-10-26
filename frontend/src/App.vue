@@ -8,7 +8,18 @@ import FeuilleQr from './components/FeuilleQr.vue'
 import Icone from './components/Icone.vue'
 import { MASQUE } from './masque'
 
-const etat = ref<State>({ entries: [], paused: false, current: '', error: '', captureMode: false, captureAvailable: false, capturesDir: '' })
+const etat = ref<State>({
+  entries: [],
+  paused: false,
+  current: '',
+  error: '',
+  captureMode: false,
+  captureAvailable: false,
+  capturesDir: '',
+  autostart: false,
+  autostartAvailable: false,
+  askAutostart: false,
+})
 const recherche = ref('')
 const maintenant = ref(Date.now())
 const copieRecente = ref('')
@@ -124,6 +135,20 @@ function surToucheRecherche(e: KeyboardEvent) {
         >
           <Icone nom="camera" :taille="16" />
         </button>
+        <button
+          v-if="etat.autostartAvailable"
+          class="bouton"
+          :class="{ actif: etat.autostart }"
+          type="button"
+          :title="
+            etat.autostart
+              ? 'ClipQR se lance à chaque ouverture de session — cliquer pour ne plus le lancer'
+              : 'Lancer ClipQR à chaque ouverture de session'
+          "
+          @click="agir(() => Clip.SetAutostart(!etat.autostart))"
+        >
+          <Icone nom="demarrage" :taille="16" />
+        </button>
         <button class="bouton" type="button" title="Effacer l’historique" :disabled="nonEpinglees === 0" @click="confirmerEffacement = true">
           <Icone nom="corbeille" :taille="16" />
         </button>
@@ -141,6 +166,14 @@ function surToucheRecherche(e: KeyboardEvent) {
       </button>
     </div>
 
+    <Transition name="bandeau">
+      <div v-if="etat.askAutostart" class="bandeau question">
+        <Icone nom="demarrage" :taille="16" />
+        <span>Lancer ClipQR à chaque ouverture de session ? Il attendra près de l’horloge, panneau fermé.</span>
+        <button type="button" class="lien" @click="agir(() => Clip.SetAutostart(false))">Non</button>
+        <button type="button" class="oui" @click="agir(() => Clip.SetAutostart(true))">Oui</button>
+      </div>
+    </Transition>
     <Transition name="bandeau">
       <div v-if="confirmerEffacement" class="bandeau confirmation">
         <span>Effacer {{ nonEpinglees }} élément{{ nonEpinglees > 1 ? 's' : '' }} ? Les épinglés et les captures enregistrées restent.</span>
@@ -173,6 +206,7 @@ function surToucheRecherche(e: KeyboardEvent) {
             @masquer="agir(() => Clip.SetSecret(e.id, !e.secret))"
             @qr="afficherQr(e)"
             @ouvrir="agir(() => Clip.Open(e.id))"
+            @supprimer="agir(() => Clip.Delete(e.id))"
           />
         </TransitionGroup>
       </template>
@@ -193,6 +227,7 @@ function surToucheRecherche(e: KeyboardEvent) {
             @masquer="agir(() => Clip.SetSecret(e.id, !e.secret))"
             @qr="afficherQr(e)"
             @ouvrir="agir(() => Clip.Open(e.id))"
+            @supprimer="agir(() => Clip.Delete(e.id))"
           />
         </TransitionGroup>
       </template>
@@ -245,6 +280,10 @@ function surToucheRecherche(e: KeyboardEvent) {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+}
+/* Le sous-titre s'abrège plutôt que de passer sous les boutons. */
+.marque > div {
   min-width: 0;
 }
 .marque img {
@@ -352,6 +391,21 @@ h1 {
 .confirmation {
   background: color-mix(in srgb, var(--danger) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+}
+.question {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+}
+.question span {
+  color: var(--texte);
+}
+.oui {
+  padding: 5px 12px;
+  border-radius: 7px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
 }
 .erreur {
   color: var(--attention);

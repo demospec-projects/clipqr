@@ -57,4 +57,13 @@ export interface State {
     "captureMode": boolean;
     "captureAvailable": boolean;
     "capturesDir": string;
+
+    /**
+     * Autostart: ClipQR is launched at each opening of the session. The panel
+     * asks once (AskAutostart), then the choice is changed from the panel or
+     * the tray menu.
+     */
+    "autostart": boolean;
+    "autostartAvailable": boolean;
+    "askAutostart": boolean;
 }

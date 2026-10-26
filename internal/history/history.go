@@ -110,6 +110,17 @@ func (h *History) SetSecret(key string, secret bool) bool {
 	return false
 }
 
+// Remove forgets one entry, pinned or not, and reports whether it was there.
+func (h *History) Remove(key string) bool {
+	for i := range h.Entries {
+		if h.Entries[i].Key() == key {
+			h.Entries = append(h.Entries[:i], h.Entries[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
 // ImageKeys lists the images still in the history, so that the copies
 // ClipQR keeps of them can be cleaned up once they fall off.
 func (h *History) ImageKeys() map[string]bool {

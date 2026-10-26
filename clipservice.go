@@ -70,6 +70,12 @@ type State struct {
 	CaptureMode      bool   `json:"captureMode"`
 	CaptureAvailable bool   `json:"captureAvailable"`
 	CapturesDir      string `json:"capturesDir"`
+	// Autostart: ClipQR is launched at each opening of the session. The panel
+	// asks once (AskAutostart), then the choice is changed from the panel or
+	// the tray menu.
+	Autostart          bool `json:"autostart"`
+	AutostartAvailable bool `json:"autostartAvailable"`
+	AskAutostart       bool `json:"askAutostart"`
 }
 
 // ClipService watches the clipboard, keeps the history and answers the interface.
@@ -92,9 +98,14 @@ type ClipService struct {
 	captureMode bool
 	capturing   atomic.Bool
 
+	settingsPath string
+	settings     settings
+	autostart    bool
+
 	emit               func(State)
 	pausedChanged      func(bool)
 	captureModeChanged func(bool)
+	autostartChanged   func(bool)
 	// withPanelHidden runs a screen grab with the panel out of the picture.
 	withPanelHidden func(grab func())
 }
@@ -106,11 +117,16 @@ func newClipService(dataDir, capturesDir string, paused bool) *ClipService {
 		capturesDir: capturesDir,
 		paused:      paused,
 		printKey:    newPrintKey(dataDir),
+
+		settingsPath: filepath.Join(dataDir, "settings.json"),
 	}
 	var err error
 	if s.data, err = history.Load(s.path); err != nil {
 		s.errText = fmt.Sprintf("Impossible de charger l’historique : %v", err)
 	}
+	s.settings = loadSettings(s.settingsPath)
+	repairAutostart()
+	s.autostart = autostartEnabled()
 	return s
 }
 
@@ -280,6 +296,23 @@ func (s *ClipService) SetSecret(id string, secret bool) {
 	}
 }
 
+// Delete forgets one entry, even pinned. Like Clear, it leaves the clipboard
+// and the saved screenshots alone; a copied image's own copy goes with it.
+func (s *ClipService) Delete(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	entry, ok := s.find(id)
+	if !ok || !s.data.Remove(entry.Key()) {
+		return
+	}
+	// Copied again from elsewhere, it must come back to the list.
+	if s.written == entry.Key() {
+		s.written = ""
+	}
+	s.persist()
+	s.publish()
+}
+
 // Clear forgets the unpinned entries; the clipboard itself is left alone, and
 // so are the screenshots saved in the screenshots folder.
 func (s *ClipService) Clear() {
@@ -369,6 +402,8 @@ func (s *ClipService) state() State {
 	st := State{
 		Entries: []EntryView{}, Paused: s.paused, Error: s.errText,
 		CaptureMode: s.captureMode, CaptureAvailable: printKeyAvailable(), CapturesDir: displayPath(s.capturesDir),
+		Autostart: s.autostart, AutostartAvailable: autostartAvailable(),
+		AskAutostart: autostartAvailable() && !s.autostart && !s.settings.AutostartAsked,
 	}
 	for _, e := range s.data.Entries {
 		view := EntryView{ID: entryID(e), Pinned: e.Pinned, Kind: history.KindOfEntry(e), Secret: e.Secret}

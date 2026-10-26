@@ -33,6 +33,7 @@ func main() {
 	dataDir := flag.String("data-dir", filepath.Join(configDir, "ClipQR"), "Dossier de l’historique")
 	paused := flag.Bool("paused", false, "Démarrer avec la collecte suspendue")
 	capturesDir := flag.String("captures-dir", filepath.Join(xdg.UserDirs.Pictures, "ecrans"), "Dossier des captures Impr. écran")
+	hidden := flag.Bool(hiddenFlag, false, "Démarrer sans ouvrir le panneau (lancement à l’ouverture de session)")
 	flag.Parse()
 
 	clip := newClipService(*dataDir, *capturesDir, *paused)
@@ -108,7 +109,12 @@ func main() {
 			go afterWindowManager(func() { panel.SetPosition(x, y) })
 		}
 	}
-	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) { show() })
+	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
+		hideFromTaskbar(panel)
+		if !*hidden {
+			show()
+		}
+	})
 
 	tray := app.SystemTray.New()
 	tray.SetIcon(trayIcon)
@@ -157,6 +163,15 @@ func trayMenu(app *application.App, show func(), clip *ClipService, paused bool)
 			}
 		})
 		clip.captureModeChanged = func(on bool) { capture.SetChecked(on) }
+	}
+	if autostartAvailable() {
+		autostart := menu.AddCheckbox("Lancer à l’ouverture de session", clip.State().Autostart)
+		autostart.OnClick(func(ctx *application.Context) {
+			if err := clip.SetAutostart(ctx.ClickedMenuItem().Checked()); err != nil {
+				clip.fail(err.Error())
+			}
+		})
+		clip.autostartChanged = func(on bool) { autostart.SetChecked(on) }
 	}
 	menu.AddSeparator()
 	menu.Add("Quitter").OnClick(func(*application.Context) { app.Quit() })

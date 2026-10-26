@@ -79,6 +79,27 @@ func TestUnpinningTrimsToLimit(t *testing.T) {
 	}
 }
 
+func TestRemoveForgetsOneEntry(t *testing.T) {
+	var h History
+	h.Add("a", now)
+	h.Add("épinglé", now)
+	h.SetPinned(key("épinglé"), true)
+	h.Add("b", now)
+	if !h.Remove(key("a")) || !h.Remove(key("épinglé")) {
+		t.Fatal("entry not removed")
+	}
+	if got := texts(h); len(got) != 1 || got[0] != "b" {
+		t.Fatal("only the removed entries should go", got)
+	}
+	if h.Remove(key("inconnu")) {
+		t.Fatal("removed an unknown text")
+	}
+	// Copied again after its removal, it comes back as a new entry.
+	if !h.Add("a", now) || h.Entries[0].Text != "a" || h.Entries[0].Pinned {
+		t.Fatal("removed text should come back when copied again", texts(h))
+	}
+}
+
 func TestSecretTextStaysHidden(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "history.json")
 	var h History
