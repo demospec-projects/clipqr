@@ -45,7 +45,7 @@ Les exécutables sont joints aux [releases](https://github.com/demospec-projects
 
 ## Développer
 
-Prérequis : Go 1.26 ou plus, Node 22 et pnpm, l’outil Wails :
+Prérequis : Go 1.27 ou plus, Node 22 et pnpm, l’outil Wails :
 
 ```sh
 go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.26
@@ -61,4 +61,4 @@ wails3 task test    # tests Go : historique, types, images, noms des captures
 
 Windows se compile aussi depuis Linux ou macOS : `wails3 build GOOS=windows`. macOS et Linux se compilent chacun sur leur système ; la compilation GitHub Actions (`.github/workflows/compilation.yml`) produit les trois à chaque étiquette `v*` et les publie en release.
 
-Structure : `main.go` (fenêtre, icône près de l’horloge, menu), `clipservice.go` (lecture du presse-papiers, méthodes appelées par l’interface), `capture.go` (mode Impr. écran), `autostart*` (lancement à l’ouverture de session), `changes_*`, `printkey_*`, `grab_screen*`, `files_*`, `taskbar_*` (ce qui diffère d’un système à l’autre), `internal/history` (historique, épingles, types, lecture de l’ancien format), `internal/imagestore` (images copiées et vignettes), `internal/screenshot` (nom des captures), `frontend/` (panneau Vue), `build/` (métadonnées et paquets par système). Les icônes se redessinent avec `python3 build/icone.py`, puis `wails3 task common:generate:icons`.
+Structure : `main.go` (fenêtre, icône près de l’horloge, menu), `clipservice.go` (lecture du presse-papiers, méthodes appelées par l’interface), `view.go` (ce que reçoit l’interface), `capture.go` (mode Impr. écran), `autostart*` (lancement à l’ouverture de session), `changes_*`, `printkey_*`, `grab_screen*`, `files_*`, `taskbar_*` (ce qui diffère d’un système à l’autre), `internal/history` (historique, épingles, types, lecture de l’ancien format), `internal/imagestore` (images copiées et vignettes), `internal/screenshot` (nom des captures), `frontend/` (panneau Vue), `build/` (métadonnées et paquets par système). Les icônes se redessinent avec `python3 build/icone.py`, puis `wails3 task common:generate:icons`.

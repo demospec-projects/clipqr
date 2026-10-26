@@ -36,3 +36,12 @@ func workArea(screen *application.Screen) (work, whole application.Rect, scale f
 	work = intersect(whole, application.Rect{X: value(0), Y: value(1), Width: value(2), Height: value(3)})
 	return
 }
+
+func intersect(a, b application.Rect) application.Rect {
+	x1, y1 := max(a.X, b.X), max(a.Y, b.Y)
+	x2, y2 := min(a.X+a.Width, b.X+b.Width), min(a.Y+a.Height, b.Y+b.Height)
+	if x2 <= x1 || y2 <= y1 {
+		return a
+	}
+	return application.Rect{X: x1, Y: y1, Width: x2 - x1, Height: y2 - y1}
+}

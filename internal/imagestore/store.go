@@ -29,11 +29,7 @@ type Store struct {
 // Fingerprint identifies an image by its pixels, whatever the encoding the
 // clipboard gave it in (the same image comes back RGBA or NRGBA).
 func Fingerprint(img image.Image) string {
-	rgba, ok := img.(*image.RGBA)
-	if !ok || rgba.Rect.Min != (image.Point{}) {
-		rgba = image.NewRGBA(image.Rect(0, 0, img.Bounds().Dx(), img.Bounds().Dy()))
-		draw.Draw(rgba, rgba.Rect, img, img.Bounds().Min, draw.Src)
-	}
+	rgba := rgbaOf(img)
 	h := sha256.New()
 	binary.Write(h, binary.LittleEndian, [2]int32{int32(rgba.Rect.Dx()), int32(rgba.Rect.Dy())})
 	for y := 0; y < rgba.Rect.Dy(); y++ {
@@ -65,6 +61,13 @@ func (s Store) MakeThumb(key string, img image.Image) error {
 	b := img.Bounds()
 	scale := min(float64(thumbWidth)/float64(b.Dx()), float64(thumbHeight)/float64(b.Dy()), 1)
 	w, h := max(1, int(float64(b.Dx())*scale)), max(1, int(float64(b.Dy())*scale))
+	// A screenshot is twenty times too big for the filter alone (a tenth of
+	// a second per 4K screen): averaging blocks first leaves it a short way
+	// to go, as smooth and ten times faster.
+	if factor := int(0.5 / scale); factor >= 2 && b.Dx() >= factor && b.Dy() >= factor {
+		img = shrink(rgbaOf(img), factor)
+		b = img.Bounds()
+	}
 	small := image.NewNRGBA(image.Rect(0, 0, w, h))
 	xdraw.CatmullRom.Scale(small, small.Rect, img, b, xdraw.Over, nil)
 	var buf bytes.Buffer
@@ -84,6 +87,41 @@ func (s Store) Prune(keep map[string]bool) {
 			os.Remove(filepath.Join(s.Dir, f.Name()))
 		}
 	}
+}
+
+// rgbaOf gives the image as RGBA with its origin at (0, 0), the layout the
+// fingerprint and the shrink read directly.
+func rgbaOf(img image.Image) *image.RGBA {
+	if rgba, ok := img.(*image.RGBA); ok && rgba.Rect.Min == (image.Point{}) {
+		return rgba
+	}
+	rgba := image.NewRGBA(image.Rect(0, 0, img.Bounds().Dx(), img.Bounds().Dy()))
+	draw.Draw(rgba, rgba.Rect, img, img.Bounds().Min, draw.Src)
+	return rgba
+}
+
+// shrink averages each factor×factor block of pixels into one.
+func shrink(img *image.RGBA, factor int) *image.RGBA {
+	out := image.NewRGBA(image.Rect(0, 0, img.Rect.Dx()/factor, img.Rect.Dy()/factor))
+	n := uint32(factor * factor)
+	for y := 0; y < out.Rect.Dy(); y++ {
+		for x := 0; x < out.Rect.Dx(); x++ {
+			var sum [4]uint32
+			for dy := 0; dy < factor; dy++ {
+				row := img.Pix[(y*factor+dy)*img.Stride+x*factor*4:]
+				for dx := 0; dx < factor; dx++ {
+					for c := range sum {
+						sum[c] += uint32(row[dx*4+c])
+					}
+				}
+			}
+			o := y*out.Stride + x*4
+			for c, v := range sum {
+				out.Pix[o+c] = uint8(v / n)
+			}
+		}
+	}
+	return out
 }
 
 func writeFile(path string, data []byte) error {

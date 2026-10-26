@@ -190,3 +190,14 @@ func TestScreenshotKeepsItsFileWhenCopiedAgain(t *testing.T) {
 		t.Fatal("a screenshot copied back must stay its saved file", e)
 	}
 }
+
+func TestHasKeyMatchesKey(t *testing.T) {
+	entries := []Entry{{Text: "a"}, {Text: "text:a"}, {Files: []string{"/a", "/b"}}, {Image: "/i.png", ImageKey: "abc"}}
+	for i, e := range entries {
+		for j, o := range entries {
+			if e.HasKey(o.Key()) != (i == j) {
+				t.Fatal("HasKey", i, j)
+			}
+		}
+	}
+}

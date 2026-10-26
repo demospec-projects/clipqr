@@ -44,12 +44,3 @@ func afterWindowManager(place func()) {
 		place()
 	}
 }
-
-func intersect(a, b application.Rect) application.Rect {
-	x1, y1 := max(a.X, b.X), max(a.Y, b.Y)
-	x2, y2 := min(a.X+a.Width, b.X+b.Width), min(a.Y+a.Height, b.Y+b.Height)
-	if x2 <= x1 || y2 <= y1 {
-		return a
-	}
-	return application.Rect{X: x1, Y: y1, Width: x2 - x1, Height: y2 - y1}
-}

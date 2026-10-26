@@ -1,10 +1,11 @@
 [Desktop Entry]
+Version=1.0
 Type=Application
-Name=clipqr
+Name=ClipQR
+Comment=Historique du presse-papiers et QR codes
 Exec=clipqr
 Icon=clipqr
-Categories=Development;
 Terminal=false
-Keywords=wails
-Version=1.0
+Categories=Utility;
+StartupWMClass=clipqr
 StartupNotify=false

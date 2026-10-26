@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image"
 	"image/color"
+	"image/draw"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -64,5 +65,30 @@ func TestKeepThumbAndPrune(t *testing.T) {
 	}
 	if _, err := os.Stat(s.ThumbPath(key)); err == nil {
 		t.Fatal("thumbnail out of the history not removed")
+	}
+}
+
+func TestThumbOfScreenKeepsItsColours(t *testing.T) {
+	s := Store{Dir: t.TempDir()}
+	img := image.NewRGBA(image.Rect(0, 0, 3840, 2160))
+	draw.Draw(img, img.Rect, image.NewUniform(color.RGBA{200, 40, 80, 255}), image.Point{}, draw.Src)
+	draw.Draw(img, image.Rect(0, 0, 1920, 2160), image.NewUniform(color.RGBA{20, 160, 240, 255}), image.Point{}, draw.Src)
+	if err := s.MakeThumb("ecran", img); err != nil {
+		t.Fatal(err)
+	}
+	f, _ := os.Open(s.ThumbPath("ecran"))
+	thumb, err := png.Decode(f)
+	f.Close()
+	if err != nil || thumb.Bounds().Dx() != 160 || thumb.Bounds().Dy() != 90 {
+		t.Fatal("thumbnail size", thumb.Bounds(), err)
+	}
+	for _, c := range []struct {
+		x       int
+		r, g, b uint32
+	}{{40, 20, 160, 240}, {120, 200, 40, 80}} {
+		r, g, b, _ := thumb.At(c.x, 45).RGBA()
+		if r>>8 != c.r || g>>8 != c.g || b>>8 != c.b {
+			t.Fatal("colour changed by the shrink", c.x, r>>8, g>>8, b>>8)
+		}
 	}
 }

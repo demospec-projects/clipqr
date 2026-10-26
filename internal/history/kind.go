@@ -32,8 +32,16 @@ func KindOfEntry(e Entry) Kind {
 var emailPattern = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
 var phonePattern = regexp.MustCompile(`^\+?[0-9 ().-]+$`)
 
+// maxTypedBytes: a link, an address or a phone number is short. A longer
+// text is text, and the patterns do not read it (the list may hold a hundred
+// long texts, looked at every time the state is sent).
+const maxTypedBytes = 2048
+
 func KindOf(text string) Kind {
 	t := strings.TrimSpace(text)
+	if len(t) > maxTypedBytes {
+		return KindText
+	}
 	switch {
 	case linkTarget(t) != "":
 		return KindLink

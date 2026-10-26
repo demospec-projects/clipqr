@@ -79,6 +79,8 @@ func readAutostartFile() (map[string]string, bool) {
 
 // desktopQuote writes a path for the Exec key: in quotes, with the characters
 // the specification reserves escaped (a space in the path is then harmless).
+// The value is unescaped twice, by the key file reader (\\ → \) and then the
+// way a shell does, so each reserved character takes two backslashes.
 func desktopQuote(path string) string {
 	return `"` + strings.NewReplacer(`\`, `\\\\`, `"`, `\\"`, "`", "\\\\`", `$`, `\\$`, `%`, `%%`).Replace(path) + `"`
 }

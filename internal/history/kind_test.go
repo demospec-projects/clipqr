@@ -1,6 +1,9 @@
 package history
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestKindOf(t *testing.T) {
 	cases := map[string]Kind{
@@ -35,5 +38,16 @@ func TestOpenTarget(t *testing.T) {
 		if got := OpenTarget(text); got != want {
 			t.Errorf("OpenTarget(%q) = %q, want %q", text, got, want)
 		}
+	}
+}
+
+func TestLongTextIsJustText(t *testing.T) {
+	long := "https://example.com/" + strings.Repeat("a", 1500)
+	if KindOf(long) != KindLink || OpenTarget(long) != long {
+		t.Fatal("a long link is still a link")
+	}
+	tooLong := "https://example.com/" + strings.Repeat("a", 5000)
+	if KindOf(tooLong) != KindText || OpenTarget(tooLong) != "" {
+		t.Fatal("a text too long for a link should be plain text")
 	}
 }

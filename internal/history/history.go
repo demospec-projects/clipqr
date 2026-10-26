@@ -32,13 +32,28 @@ type Entry struct {
 
 // Key tells two copies of the same thing apart from two different things.
 func (e Entry) Key() string {
+	prefix, body := e.KeyParts()
+	return prefix + body
+}
+
+// KeyParts gives the key in two pieces, so that a text key, which is the
+// text itself, can be compared or hashed in place: the whole list is looked
+// at every time something is copied, and it may hold a hundred long texts.
+func (e Entry) KeyParts() (prefix, body string) {
 	switch {
 	case len(e.Files) > 0:
-		return "files:" + strings.Join(e.Files, "\n")
+		return "files:", strings.Join(e.Files, "\n")
 	case e.ImageKey != "":
-		return "image:" + e.ImageKey
+		return "image:", e.ImageKey
 	}
-	return "text:" + e.Text
+	return "text:", e.Text
+}
+
+// HasKey tells whether the entry is the one the key designates.
+func (e Entry) HasKey(key string) bool {
+	prefix, body := e.KeyParts()
+	rest, ok := strings.CutPrefix(key, prefix)
+	return ok && rest == body
 }
 
 func (e Entry) valid() bool {
@@ -67,12 +82,13 @@ func (h *History) AddEntry(entry Entry) bool {
 	if !entry.valid() {
 		return false
 	}
-	if len(h.Entries) > 0 && h.Entries[0].Key() == entry.Key() {
+	key := entry.Key()
+	if len(h.Entries) > 0 && h.Entries[0].HasKey(key) {
 		return false
 	}
 	entries := []Entry{entry}
 	for _, old := range h.Entries {
-		if old.Key() == entry.Key() {
+		if old.HasKey(key) {
 			// Copied again: it keeps its pin, stays hidden, and a screenshot
 			// stays the file saved in the screenshots folder.
 			entries[0].Pinned = entries[0].Pinned || old.Pinned
@@ -91,7 +107,7 @@ func (h *History) AddEntry(entry Entry) bool {
 
 func (h *History) SetPinned(key string, pinned bool) bool {
 	for i := range h.Entries {
-		if h.Entries[i].Key() == key {
+		if h.Entries[i].HasKey(key) {
 			h.Entries[i].Pinned = pinned
 			h.trim()
 			return true
@@ -102,7 +118,7 @@ func (h *History) SetPinned(key string, pinned bool) bool {
 
 func (h *History) SetSecret(key string, secret bool) bool {
 	for i := range h.Entries {
-		if h.Entries[i].Key() == key {
+		if h.Entries[i].HasKey(key) {
 			h.Entries[i].Secret = secret
 			return true
 		}
@@ -113,7 +129,7 @@ func (h *History) SetSecret(key string, secret bool) bool {
 // Remove forgets one entry, pinned or not, and reports whether it was there.
 func (h *History) Remove(key string) bool {
 	for i := range h.Entries {
-		if h.Entries[i].Key() == key {
+		if h.Entries[i].HasKey(key) {
 			h.Entries = append(h.Entries[:i], h.Entries[i+1:]...)
 			return true
 		}
